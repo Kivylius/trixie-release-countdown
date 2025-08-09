@@ -1,7 +1,7 @@
 class DebianTrixieMonitor {
   constructor() {
     this.feedUrl = "https://www.debian.org/News/news";
-    this.proxyUrl = "https://api.allorigins.win/get?url=";
+    this.proxyUrl = "https://corsproxy.io/?url=";
     this.checkInterval = 30000; // 30 seconds
     this.isReleased = false;
     this.fireworks = null;
@@ -124,14 +124,14 @@ class DebianTrixieMonitor {
       const response = await fetch(
         `${this.proxyUrl}${encodeURIComponent(micronewsUrl)}`
       );
-      const data = await response.json();
+      const data = await response.text(); // Changed from .json() to .text()
 
-      if (data.contents) {
+      if (data) {
         this.debugLog(
-          `📄 Got micronews content, length: ${data.contents.length}`,
+          `📄 Got micronews content, length: ${data.length}`,
           "success"
         );
-        await this.parseAndCheck(data.contents);
+        await this.parseAndCheck(data); // Pass data directly instead of data.contents
       } else {
         this.debugLog("❌ No content from micronews feed", "error");
       }
@@ -152,10 +152,10 @@ class DebianTrixieMonitor {
       const response = await fetch(
         `${this.proxyUrl}${encodeURIComponent(releaseNotesUrl)}`
       );
-      const data = await response.json();
+      const data = await response.text(); // Changed from .json() to .text()
 
-      if (data.contents) {
-        const content = data.contents.toLowerCase();
+      if (data) {
+        const content = data.toLowerCase(); // Use data directly instead of data.contents
 
         if (content.includes("debian 13") || content.includes("debian 13")) {
           // TEMP: Added "debian 12" for testing
