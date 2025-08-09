@@ -7,6 +7,8 @@ class DebianTrixieMonitor {
     this.fireworks = null;
     this.countdownInterval = null;
     this.nextCheckTime = null;
+    this.soundEnabled = false;
+    this.audioContext = null;
 
     this.init();
   }
@@ -51,6 +53,14 @@ class DebianTrixieMonitor {
           debugPanel.style.display = "none";
           toggleDebugBtn.textContent = "🔍 Show Debug Console";
         }
+      });
+    }
+
+    // Sound toggle button
+    const soundToggleBtn = document.getElementById("sound-toggle");
+    if (soundToggleBtn) {
+      soundToggleBtn.addEventListener("click", () => {
+        this.toggleSound();
       });
     }
 
@@ -100,6 +110,78 @@ class DebianTrixieMonitor {
 
     // Also log to console
     console.log(message);
+  }
+
+  toggleSound() {
+    const soundButton = document.getElementById("sound-toggle");
+
+    if (!this.soundEnabled) {
+      // Enable sound and test it
+      this.enableSound();
+      soundButton.textContent = "🔊 Disable Sound";
+      soundButton.style.backgroundColor = "#27ae60";
+      this.debugLog("🔊 Sound enabled! Playing test sound...", "success");
+      this.playTestSound();
+      this.fireworks?.setSoundEnabled?.(true);
+    } else {
+      // Disable sound
+      this.soundEnabled = false;
+      soundButton.textContent = "🔇 Enable Sound";
+      soundButton.style.backgroundColor = "#34495e";
+      this.debugLog("🔇 Sound disabled", "info");
+      this.fireworks?.setSoundEnabled?.(false);
+    }
+  }
+
+  enableSound() {
+    try {
+      this.audioContext = new (window.AudioContext ||
+        window.webkitAudioContext)();
+      this.soundEnabled = true;
+      this.fireworks.setSoundEnabled(true);
+    } catch (error) {
+      this.debugLog("❌ Failed to initialize audio context", "error");
+    }
+  }
+
+  playTestSound() {
+    if (!this.soundEnabled || !this.audioContext) return;
+
+    try {
+      // Play a nice little chime sound
+      const oscillator = this.audioContext.createOscillator();
+      const gainNode = this.audioContext.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(this.audioContext.destination);
+
+      // Play a pleasant C major chord sequence
+      const notes = [523.25, 659.25, 783.99]; // C, E, G
+
+      notes.forEach((freq, index) => {
+        setTimeout(() => {
+          const osc = this.audioContext.createOscillator();
+          const gain = this.audioContext.createGain();
+
+          osc.connect(gain);
+          gain.connect(this.audioContext.destination);
+
+          osc.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+          osc.type = "sine";
+
+          gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(
+            0.01,
+            this.audioContext.currentTime + 0.3
+          );
+
+          osc.start(this.audioContext.currentTime);
+          osc.stop(this.audioContext.currentTime + 0.3);
+        }, index * 100);
+      });
+    } catch (error) {
+      this.debugLog("❌ Failed to play test sound", "error");
+    }
   }
 
   startMonitoring() {
@@ -157,7 +239,7 @@ class DebianTrixieMonitor {
       if (data) {
         const content = data.toLowerCase(); // Use data directly instead of data.contents
 
-        if (content.includes("debian 13") || content.includes("debian 13")) {
+        if (content.includes("debian 13") || window.test_launch) {
           // TEMP: Added "debian 12" for testing
           this.debugLog(
             '✅ VERIFIED: Release notes contain "Debian 13"!',
@@ -543,7 +625,7 @@ class DebianTrixieMonitor {
         max: 0.03,
       },
       sound: {
-        enabled: true,
+        enabled: this.soundEnabled, // Only enable sound if user has enabled it
         files: [
           "https://fireworks.js.org/sounds/explosion0.mp3",
           "https://fireworks.js.org/sounds/explosion1.mp3",
@@ -558,7 +640,8 @@ class DebianTrixieMonitor {
 
     this.fireworks.start();
 
-    this.debugLog("🎆 EPIC FIREWORKS STARTED WITH SOUND!", "success");
+    const soundStatus = this.soundEnabled ? "WITH SOUND" : "WITHOUT SOUND";
+    this.debugLog(`🎆 EPIC FIREWORKS STARTED ${soundStatus}!`, "success");
   }
 
   stopFireworks() {
@@ -593,7 +676,7 @@ class DebianTrixieMonitor {
 
 // Initialize the monitor when the page loads
 document.addEventListener("DOMContentLoaded", () => {
-  new DebianTrixieMonitor();
+  window.deb = new DebianTrixieMonitor();
 });
 
 // Add manual refresh button functionality
